@@ -1,0 +1,12 @@
+{
+  "name": "sanigroup/sg-montagerechner",
+  "description": "Sanigroup Montagerechner Variante A",
+  "type": "wordpress-plugin",
+  "autoload": {
+    "psr-4": {
+      "SGMR\\": "src/",
+      "Sanigroup\\Montagerechner\\": "src/"
+    }
+  },
+  "require": {}
+}

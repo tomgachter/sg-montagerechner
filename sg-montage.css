@@ -1,0 +1,128 @@
+/* --- Grundkarte (Produktseite / Shortcodes) --- */
+.sg-montage-card {
+  border: 1px solid #e2e2e2;
+  border-radius: 14px;
+  padding: 18px;
+  margin: 18px 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.sg-montage-card h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.sg-input,
+.sg-plz-cart,
+.sg-plz-checkout {
+  width: 100%;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  margin: 6px 0;
+}
+.sg-input:focus,
+.sg-plz-cart:focus,
+.sg-plz-checkout:focus {
+  outline: none;
+  border-color: #999;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.06);
+}
+
+/* --- Buttons --- */
+.sg-btn-mini,
+.sg-btn-calc {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #000;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.sg-btn-mini:hover,
+.sg-btn-calc:hover { background: #333; }
+.sg-btn-mini[aria-expanded="true"] { background: #444; }
+.sg-montage-result { margin-top: 10px; font-size: 0.9rem; line-height: 1.3; }
+.sg-price { font-weight: 600; margin: 6px 0; }
+.sg-note  { font-size: 0.8rem; color: #555; }
+.sg-note.ok{ color:#0a7a0a; }
+.sg-note.warn{ color:#c00; }
+.sg-msg.warn { color: #c00; font-weight: 600; }
+
+.sg-booking-auto-tabs-nav {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.sg-booking-auto-tab {
+  border: 1px solid #ddd;
+  background: #f8f8f8;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  transition: background .2s ease, border-color .2s ease;
+}
+.sg-booking-auto-tab.is-active {
+  background: #fff;
+  border-color: #333;
+}
+.sg-booking-auto-selector.is-hidden {
+  display: none;
+}
+
+/* --- Warenkorb: Zeilenblock --- */
+.sg-linebox {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0;
+  background: #fafafa;
+}
+.sg-linebox label { font-size: 0.95rem; font-weight: 500; margin-right: 8px; }
+
+/* --- Dropdown (sichtbares Caret) --- */
+.sg-service-select{
+  min-width: 220px;
+  padding: 8px 34px 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  -webkit-appearance: auto;
+     -moz-appearance: auto;
+          appearance: auto;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 8px;
+}
+.sg-service-select:focus{
+  outline: none; border-color: #bbb; box-shadow: 0 0 0 3px rgba(0,0,0,.04);
+}
+
+/* --- Optionen --- */
+.sg-old-wrap{ display:inline-flex; align-items:center; gap:8px; margin-top:8px; }
+.sg-old-wrap input{ width:18px; height:18px; }
+.sg-montage-opts input[type=radio]{ margin-right:8px; }
+.sg-montage-opts label{ display:flex; align-items:center; gap:8px; }
+.sg-hint{ color:#777; opacity:.9; margin-top:6px; }
+.small{ font-size:.85rem; }
+.sg-etage-opts label{ display:block; margin:6px 0 0; }
+.sg-etage-opts input[type=radio]{ transform: scale(1.05); margin-right:8px; }
+.sg-disabled{ opacity:.5; pointer-events:none; }
+.sg-linebox .sg-service-select option[disabled]{ color:#aaa; }
+
+@media (max-width:640px){
+  .sg-montage-card{ padding:14px; }
+  .sg-service-select{ min-width:100%; }
+}
+
+/* Tooltip */
+#sg-tip{ display:none; background:#000; color:#fff; padding:6px 8px; border-radius:6px; font-size:.8rem; z-index:99999; }

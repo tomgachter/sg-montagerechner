@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Wordpress - ignore core, configuration, examples, uploads and logs.
 # https://github.com/github/gitignore/blob/main/WordPress.gitignore
 
@@ -46,3 +47,24 @@ wp-config.php
 # Note: If you wish to whitelist themes,
 # uncomment the next line
 #/wp-content/themes
+=======
+/vendor/
+/node_modules/
+/dist/
+/build/
+/wp-env/
+/.idea/
+/.vscode/
+/.DS_Store
+*.log
+.DS_Store
+assets/.DS_Store
+src/.DS_Store
+wp-content/debug.log
+node_modules
+vendor
+.DS_Store
+wp-content/debug.log
+node_modules
+vendor
+>>>>>>> e5f828a (Initial commit)
