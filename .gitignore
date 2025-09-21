@@ -68,3 +68,10 @@ wp-content/debug.log
 node_modules
 vendor
 >>>>>>> e5f828a (Initial commit)
+.DS_Store
+fluent-booking-pro/
+fluent-booking/
+.DS_Store
+fluent-booking-pro/
+fluent-booking/
+.DS_Store
