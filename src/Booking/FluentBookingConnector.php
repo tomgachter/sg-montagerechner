@@ -324,6 +324,22 @@ class FluentBookingConnector
             $body['detail'] = $desc;
         }
 
+        $calendarEntry = isset($body['calendar_entry']) && is_array($body['calendar_entry'])
+            ? $body['calendar_entry']
+            : [];
+        if ($title !== '') {
+            $calendarEntry['title'] = $title;
+        }
+        if ($desc !== '') {
+            $calendarEntry['description'] = $desc;
+        }
+        if ($addrLine !== '') {
+            $calendarEntry['location'] = $addrLine;
+        }
+        if ($calendarEntry) {
+            $body['calendar_entry'] = $calendarEntry;
+        }
+
         $teamConfig = $this->teamConfig($payload['team'] ?? '');
         $calendarId = 0;
         if (isset($payload['meta']['calendar_id'])) {
