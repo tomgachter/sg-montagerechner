@@ -267,7 +267,12 @@ class FluentBookingAugmentor
             $details['phone'] = $this->orderPhone((int) ($context['order_id'] ?? 0));
         }
 
-        $customTitle = $this->buildTitle($details['postcode'], $details['name'], $details['phone'], $context['stable'] ?? []);
+        $customTitle = $this->buildTitle(
+            $details['postcode'],
+            $details['address'],
+            $details['phone'],
+            $context['stable'] ?? []
+        );
 
         if ($customTitle === '') {
             $customTitle = $this->buildTitleFromOrder((int) ($context['order_id'] ?? 0));
@@ -915,11 +920,21 @@ class FluentBookingAugmentor
             $contactName = trim(($stable['sg_first_name'] ?? '') . ' ' . ($stable['sg_last_name'] ?? ''));
         }
 
+        $stableForTitle = $stable;
+        if (!isset($stableForTitle['sg_full_name']) && $contactName !== '') {
+            $stableForTitle['sg_full_name'] = $contactName;
+        }
+        $extraCandidates = $contactName !== '' ? [$contactName] : [];
+        $deliveryAddress = $this->resolveDeliveryAddress($stableForTitle, $extraCandidates);
+        if (!isset($stableForTitle['delivery_address'])) {
+            $stableForTitle['delivery_address'] = $deliveryAddress;
+        }
+
         $title = $this->buildTitle(
-            $stable['sg_delivery_postcode'] ?? '',
-            $contactName,
-            $stable['sg_phone'] ?? '',
-            $stable
+            $stableForTitle['sg_delivery_postcode'] ?? '',
+            $deliveryAddress,
+            $stableForTitle['sg_phone'] ?? '',
+            $stableForTitle
         );
 
         $description = $this->buildDescription(
@@ -1533,8 +1548,10 @@ class FluentBookingAugmentor
 
         $details = $this->orderContactDetails($order);
 
-        return $this->buildTitle($details['postcode'], $details['name'], $details['phone'], [
+        return $this->buildTitle($details['postcode'], $details['address'], $details['phone'], [
             'sg_delivery_postcode' => $details['postcode'],
+            'sg_delivery_address' => $details['address'],
+            'delivery_address' => $details['address'],
             'sg_full_name' => $details['name'],
             'sg_phone' => $details['phone'],
         ]);
@@ -1553,11 +1570,35 @@ class FluentBookingAugmentor
             $order->get_meta('_sg_delivery_phone', true) ?: $order->get_shipping_phone() ?: $order->get_billing_phone()
         ));
 
+        $address = $this->orderDeliveryAddress($order);
+
         return [
             'postcode' => $postcode,
             'name' => $name,
+            'address' => $address,
             'phone' => $phone,
         ];
+    }
+
+    private function orderDeliveryAddress(WC_Order $order): string
+    {
+        $street1 = (string) ($order->get_shipping_address_1() ?: $order->get_billing_address_1());
+        $street2 = (string) ($order->get_shipping_address_2() ?: $order->get_billing_address_2());
+        $city = (string) ($order->get_shipping_city() ?: $order->get_billing_city());
+        $state = (string) ($order->get_shipping_state() ?: $order->get_billing_state());
+
+        $street1 = sanitize_text_field($street1);
+        $street2 = sanitize_text_field($street2);
+        $city = sanitize_text_field($city);
+        $state = sanitize_text_field($state);
+
+        $streetLine = trim($street1 . ($street2 !== '' ? ' ' . $street2 : ''));
+        $localityParts = array_filter([$city, $state]);
+        $localityLine = trim(implode(' ', $localityParts));
+
+        $parts = array_filter([$streetLine, $localityLine]);
+
+        return $parts ? implode(', ', $parts) : '';
     }
 
     private function contactDetailsFromContext(array $context): array
@@ -1569,12 +1610,68 @@ class FluentBookingAugmentor
             $name = trim(($stable['sg_first_name'] ?? '') . ' ' . ($stable['sg_last_name'] ?? ''));
         }
         $phone = $stable['sg_phone'] ?? ($context['phone'] ?? '');
+        $addressCandidates = [];
+        if (!empty($context['location'])) {
+            $addressCandidates[] = (string) $context['location'];
+        }
+        if (!empty($context['name'])) {
+            $addressCandidates[] = (string) $context['name'];
+        }
+
+        $address = $this->resolveDeliveryAddress($stable, $addressCandidates);
 
         return [
             'postcode' => sanitize_text_field((string) $postcode),
             'name' => trim((string) $name),
+            'address' => $address,
             'phone' => $this->sanitizePhone((string) $phone),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $stable
+     * @param array<int, string> $extraCandidates
+     */
+    private function resolveDeliveryAddress(array $stable, array $extraCandidates = []): string
+    {
+        $candidates = [];
+
+        if (!empty($stable['delivery_address'])) {
+            $candidates[] = (string) $stable['delivery_address'];
+        }
+        if (!empty($stable['sg_delivery_address'])) {
+            $candidates[] = (string) $stable['sg_delivery_address'];
+        }
+
+        if (!empty($stable['sg_delivery_street']) || !empty($stable['sg_delivery_city']) || !empty($stable['sg_delivery_postcode'])) {
+            $candidates[] = $this->buildAddressLine($stable);
+        }
+
+        foreach ($extraCandidates as $candidate) {
+            if (is_string($candidate)) {
+                $candidates[] = $candidate;
+            }
+        }
+
+        if (!empty($stable['sg_full_name'])) {
+            $candidates[] = (string) $stable['sg_full_name'];
+        }
+        if (!empty($stable['sg_first_name']) || !empty($stable['sg_last_name'])) {
+            $candidates[] = trim((string) ($stable['sg_first_name'] ?? '') . ' ' . (string) ($stable['sg_last_name'] ?? ''));
+        }
+
+        foreach ($candidates as $candidate) {
+            $clean = trim((string) $candidate);
+            if ($clean === '') {
+                continue;
+            }
+            $clean = sanitize_text_field($clean);
+            if ($clean !== '') {
+                return $clean;
+            }
+        }
+
+        return '';
     }
 
     private function orderPhone(int $orderId): string
@@ -1658,36 +1755,49 @@ class FluentBookingAugmentor
         return $signature ?: '';
     }
 
-    private function buildTitle(string $postcode, string $name, string $phone, array $stable = []): string
+    private function buildTitle(string $postcode, string $addressCandidate, string $phone, array $stable = []): string
     {
         $postcode = $postcode !== '' ? sanitize_text_field($postcode) : sanitize_text_field($stable['sg_delivery_postcode'] ?? '');
-        $fullname = trim($name);
-        if ($fullname === '' && !empty($stable['sg_first_name']) || !empty($stable['sg_last_name'])) {
-            $fullname = trim(($stable['sg_first_name'] ?? '') . ' ' . ($stable['sg_last_name'] ?? ''));
+
+        $extraCandidates = [];
+        if ($addressCandidate !== '') {
+            $extraCandidates[] = $addressCandidate;
         }
-        if ($fullname === '' && !empty($stable['sg_delivery_address'])) {
-            $fullname = $stable['sg_delivery_address'];
+
+        $address = $this->resolveDeliveryAddress($stable, $extraCandidates);
+
+        if ($postcode !== '' && $address !== '') {
+            $cleaned = preg_replace('/\b' . preg_quote($postcode, '/') . '\b/u', '', $address);
+            if (is_string($cleaned)) {
+                $address = $cleaned;
+            }
+            $compressed = preg_replace('/\s{2,}/u', ' ', $address);
+            if (is_string($compressed)) {
+                $address = $compressed;
+            }
+            $address = trim($address, " ,-/");
         }
+
+        $address = sanitize_text_field($address);
+
         $phoneValue = $this->sanitizePhone($phone);
         if ($phoneValue === '' && !empty($stable['sg_phone'])) {
-            $phoneValue = $this->sanitizePhone($stable['sg_phone']);
+            $phoneValue = $this->sanitizePhone((string) $stable['sg_phone']);
         }
 
-        $parts = [
-            $postcode,
-            $fullname,
-            $phoneValue,
-        ];
-
-        $parts = array_map('trim', array_map('strval', array_filter($parts, static function ($value) {
+        $parts = array_filter([$postcode, $address, $phoneValue], static function ($value) {
             return $value !== null && $value !== '';
-        })));
+        });
+
+        $parts = array_map(static function ($value) {
+            return trim((string) $value);
+        }, $parts);
 
         if (!$parts) {
             return '';
         }
 
-        return implode(' – ', $parts);
+        return implode(' - ', $parts);
     }
 
     private function buildDescription(string $services, $items, string $address): string
