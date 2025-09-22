@@ -64,6 +64,61 @@
     });
   });
 
+  /* ---------- Produktseite: Nischen-Popup ---------- */
+  function closeNichePopup($popup, returnFocus=true){
+    if(!$popup || !$popup.length) return;
+    $popup.attr('aria-hidden','true').attr('hidden',true).removeClass('is-open');
+    const $trigger=$popup.data('trigger');
+    if($trigger && $trigger.length){
+      $trigger.attr('aria-expanded','false');
+      if(returnFocus) $trigger.trigger('focus');
+    }
+    $popup.removeData('trigger');
+    if($('.sg-niche-popup.is-open').length===0){
+      $('body').removeClass('sg-niche-popup-open');
+    }
+  }
+
+  function openNichePopup($button, $popup){
+    if(!$popup || !$popup.length) return;
+    $('.sg-niche-popup.is-open').each(function(){ closeNichePopup($(this), false); });
+    $popup.removeAttr('hidden').attr('aria-hidden','false').addClass('is-open');
+    $popup.data('trigger',$button);
+    if($button && $button.length){
+      $button.attr('aria-expanded','true');
+    }
+    $('body').addClass('sg-niche-popup-open');
+    const $focus=$popup.find('.sg-niche-popup__close').first();
+    if($focus.length){ setTimeout(function(){ $focus.trigger('focus'); }, 20); }
+  }
+
+  $(document).on('click','.sg-niche-btn',function(e){
+    e.preventDefault();
+    const $btn=$(this);
+    const id=$btn.data('target');
+    if(!id) return;
+    const $popup=$('#'+id);
+    if(!$popup.length) return;
+    if($popup.hasClass('is-open')) closeNichePopup($popup);
+    else openNichePopup($btn,$popup);
+  });
+
+  $(document).on('click','.sg-niche-popup__close, .sg-niche-popup__overlay',function(e){
+    e.preventDefault();
+    const $popup=$(this).closest('.sg-niche-popup');
+    closeNichePopup($popup);
+  });
+
+  $(document).on('keydown',function(e){
+    if(e.key==='Escape' || e.keyCode===27){
+      const $open=$('.sg-niche-popup.is-open').last();
+      if($open.length){
+        e.preventDefault();
+        closeNichePopup($open);
+      }
+    }
+  });
+
   /* ---------- PLZ Sync ---------- */
   function pushPlz(plz){
     // cache in cookie as fallback for session propagation

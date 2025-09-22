@@ -69,6 +69,8 @@ final class SG_Montagerechner_V3 {
     const UPLOAD_PDF_DIR   = 'sg-montage-pdf';       // /uploads/sg-montage-pdf
     const OPT_PDFS_MAP     = 'sg_mr_pdfs';           // [cat_slug => attachment_id]
     const OPT_PDF_GLOBAL   = 'sg_mr_pdf_global';     // int attachment id
+    const TERM_META_NICHE_VIDEO   = 'sg_mr_niche_video';
+    const TERM_META_NICHE_CONTENT = 'sg_mr_niche_content';
     private static $status_guard_running = false;
 
     /** Bootstrap */
@@ -82,6 +84,10 @@ final class SG_Montagerechner_V3 {
 
         /* Admin */
         add_action('admin_menu', [$inst, 'admin_menu']);
+        add_action('product_cat_add_form_fields',  [__CLASS__, 'admin_category_niche_fields_add']);
+        add_action('product_cat_edit_form_fields', [__CLASS__, 'admin_category_niche_fields_edit']);
+        add_action('created_product_cat',          [__CLASS__, 'admin_category_niche_fields_save']);
+        add_action('edited_product_cat',           [__CLASS__, 'admin_category_niche_fields_save']);
 
         /* Cart/Checkout-Steuerelemente */
         add_action('woocommerce_after_cart_item_name',        [$inst, 'render_cart_item_controls'], 20, 2);
@@ -92,6 +98,7 @@ final class SG_Montagerechner_V3 {
         add_shortcode('sg_montage_rechner_product', [$inst, 'sc_product_calc']);   // Karte auf Produktseite
         add_shortcode('sg_montage_rechner_button',  [$inst, 'sc_product_popup']);  // Button + aufklappbare Box
         add_shortcode('sg_plz_box',                 [$inst, 'sc_plz_box']);        // Freiplatzierbare PLZ Box (Breakdance)
+        add_shortcode('sg_niche_popup',             [__CLASS__, 'sc_niche_popup']);
 
         /* Ajax */
         add_action('wp_ajax_sg_m_set_plz',          [$inst, 'ajax_set_plz']);
@@ -553,6 +560,72 @@ final class SG_Montagerechner_V3 {
         add_submenu_page('sg-services', 'PDFs', 'PDFs', 'manage_woocommerce', 'sg-services-pdfs', [$this, 'admin_pdfs']);
     }
 
+    public static function admin_category_niche_fields_add($taxonomy) {
+        if ($taxonomy !== 'product_cat') return;
+        ?>
+        <div class="form-field">
+            <label for="sg_niche_video_url"><?php esc_html_e('Nischen-Video URL', 'sg-montagerechner'); ?></label>
+            <input type="url" name="sg_niche_video_url" id="sg_niche_video_url" value="" placeholder="https://">
+            <p class="description"><?php esc_html_e('Verlinken Sie hier das Video, das im Popup erscheinen soll (z. B. YouTube oder Vimeo).', 'sg-montagerechner'); ?></p>
+        </div>
+        <div class="form-field">
+            <label for="sg_niche_content"><?php esc_html_e('Nischen-Informationen', 'sg-montagerechner'); ?></label>
+            <textarea name="sg_niche_content" id="sg_niche_content" rows="5"></textarea>
+            <p class="description"><?php esc_html_e('Zusätzliche Hinweise für das Popup. Shortcodes sind erlaubt.', 'sg-montagerechner'); ?></p>
+        </div>
+        <?php
+    }
+
+    public static function admin_category_niche_fields_edit($term) {
+        if (!$term instanceof WP_Term || $term->taxonomy !== 'product_cat') return;
+        $video   = get_term_meta($term->term_id, self::TERM_META_NICHE_VIDEO, true);
+        $content = get_term_meta($term->term_id, self::TERM_META_NICHE_CONTENT, true);
+        ?>
+        <tr class="form-field">
+            <th scope="row"><label for="sg_niche_video_url"><?php esc_html_e('Nischen-Video URL', 'sg-montagerechner'); ?></label></th>
+            <td>
+                <input type="url" name="sg_niche_video_url" id="sg_niche_video_url" value="<?php echo esc_attr($video); ?>" class="regular-text" placeholder="https://">
+                <p class="description"><?php esc_html_e('Verlinken Sie hier das Video, das im Popup erscheinen soll (z. B. YouTube oder Vimeo).', 'sg-montagerechner'); ?></p>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th scope="row"><label for="sg_niche_content"><?php esc_html_e('Nischen-Informationen', 'sg-montagerechner'); ?></label></th>
+            <td>
+                <?php
+                if (function_exists('wp_enqueue_editor')) {
+                    wp_enqueue_editor();
+                }
+                wp_editor($content, 'sg_niche_content', [
+                    'textarea_name' => 'sg_niche_content',
+                    'textarea_rows' => 6,
+                    'media_buttons' => false,
+                ]);
+                ?>
+                <p class="description"><?php esc_html_e('Pflegen Sie hier zusätzliche Hinweise zum Ausmessen der Nische. Shortcodes und Breakdance-Inhalte sind möglich.', 'sg-montagerechner'); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+
+    public static function admin_category_niche_fields_save($term_id) {
+        if (!current_user_can('manage_woocommerce')) return;
+        if (!$term_id) return;
+
+        $video = '';
+        if (isset($_POST['sg_niche_video_url'])) {
+            $video = esc_url_raw(trim(wp_unslash((string) $_POST['sg_niche_video_url'])));
+        }
+        if ($video) update_term_meta($term_id, self::TERM_META_NICHE_VIDEO, $video);
+        else delete_term_meta($term_id, self::TERM_META_NICHE_VIDEO);
+
+        $content = '';
+        if (isset($_POST['sg_niche_content'])) {
+            $content = wp_kses_post(wp_unslash((string) $_POST['sg_niche_content']));
+        }
+        if ($content !== '') update_term_meta($term_id, self::TERM_META_NICHE_CONTENT, $content);
+        else delete_term_meta($term_id, self::TERM_META_NICHE_CONTENT);
+    }
+
     private function admin_save_notice($ok=true){
         printf('<div class="%s"><p>%s</p></div>', $ok?'updated':'error', $ok?'Gespeichert.':'Fehler beim Speichern.');
     }
@@ -954,6 +1027,102 @@ final class SG_Montagerechner_V3 {
             if ($term->parent) $term = get_term($term->parent, 'product_cat'); else break;
         }
         return implode('/', $slugs).'/';
+    }
+
+    private static function matches_einbau(string $value) : bool {
+        return $value !== '' && (bool) preg_match('/\beinbau\b/iu', $value);
+    }
+
+    private static function product_has_einbau_attribute(WC_Product $product) : bool {
+        if ($product->is_type('variation')) {
+            $parent_id = $product->get_parent_id();
+            if ($parent_id) {
+                $parent = wc_get_product($parent_id);
+                if ($parent) {
+                    return self::product_has_einbau_attribute($parent);
+                }
+            }
+        }
+
+        $keys = ['pa_bauform', 'bauform'];
+        foreach ($keys as $key) {
+            $val = strtolower(trim($product->get_attribute($key)));
+            if ($val && self::matches_einbau($val)) return true;
+        }
+
+        $attributes = $product->get_attributes();
+        $has_wc_attribute_class = class_exists('WC_Product_Attribute');
+        foreach ($attributes as $attr) {
+            if ($has_wc_attribute_class && $attr instanceof WC_Product_Attribute) {
+                $name = strtolower($attr->get_name());
+                if ($name === 'pa_bauform' || $name === 'bauform') {
+                    $taxonomy = method_exists($attr, 'get_taxonomy') ? $attr->get_taxonomy() : '';
+                    foreach ($attr->get_options() as $option) {
+                        if (is_numeric($option)) {
+                            $term = $taxonomy ? get_term((int) $option, $taxonomy) : get_term((int) $option);
+                            if ($term && !is_wp_error($term)) {
+                                if (self::matches_einbau($term->slug) || self::matches_einbau($term->name)) {
+                                    return true;
+                                }
+                            }
+                        } else {
+                            if (self::matches_einbau((string) $option)) return true;
+                        }
+                    }
+                }
+            } elseif (is_array($attr)) {
+                $name = strtolower((string) ($attr['name'] ?? ''));
+                if (in_array($name, ['pa_bauform', 'bauform', 'attribute_pa_bauform'], true)) {
+                    $options = $attr['options'] ?? [];
+                    if (!is_array($options)) $options = [$options];
+                    foreach ($options as $option) {
+                        if (self::matches_einbau((string) $option)) return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static function term_depth(WP_Term $term) : int {
+        return count(get_ancestors($term->term_id, 'product_cat'));
+    }
+
+    private static function get_niche_popup_data(WC_Product $product) : ?array {
+        if (!self::product_has_einbau_attribute($product)) {
+            return null;
+        }
+
+        $terms = get_the_terms($product->get_id(), 'product_cat');
+        if (is_wp_error($terms) || empty($terms)) {
+            return null;
+        }
+
+        usort($terms, function ($a, $b) {
+            return self::term_depth($b) <=> self::term_depth($a);
+        });
+
+        $checked = [];
+        foreach ($terms as $term) {
+            if (!$term instanceof WP_Term) continue;
+            $chain = array_merge([$term->term_id], get_ancestors($term->term_id, 'product_cat'));
+            foreach ($chain as $term_id) {
+                if (isset($checked[$term_id])) continue;
+                $checked[$term_id] = true;
+                $video   = trim((string) get_term_meta($term_id, self::TERM_META_NICHE_VIDEO, true));
+                $content = (string) get_term_meta($term_id, self::TERM_META_NICHE_CONTENT, true);
+                if ($video !== '' || trim($content) !== '') {
+                    return [
+                        'term_id' => $term_id,
+                        'video'   => $video,
+                        'content' => $content,
+                    ];
+                }
+            }
+        }
+
+        return null;
     }
 
     private static function get_attr_ci(WC_Product $product, array $keys) : string {
@@ -1523,6 +1692,79 @@ final class SG_Montagerechner_V3 {
         $atts = shortcode_atts(['label'=>'PLZ (Liefer-/Montageort)'], $atts, 'sg_plz_box');
         ob_start();
         $this->render_cart_plz();
+        return ob_get_clean();
+    }
+
+    public static function sc_niche_popup($atts) {
+        $defaults = [
+            'product_id'   => 0,
+            'button_label' => __('Passt dieses Gerät in meine Nische', 'sg-montagerechner'),
+        ];
+        $atts = shortcode_atts($defaults, $atts, 'sg_niche_popup');
+        $product_id = (int) $atts['product_id'];
+        if (!$product_id && function_exists('is_product') && is_product()) {
+            $product_id = get_the_ID();
+        }
+        if (!$product_id) return '';
+
+        $product = wc_get_product($product_id);
+        if (!$product) return '';
+
+        $data = self::get_niche_popup_data($product);
+        if (!$data) return '';
+
+        $button_label = (string) $atts['button_label'];
+        if ($button_label === '') {
+            $button_label = $defaults['button_label'];
+        }
+
+        $popup_id = 'sg-niche-' . uniqid();
+        $video_html = '';
+        if (!empty($data['video'])) {
+            $embed = wp_oembed_get($data['video']);
+            if (!$embed) {
+                $path = wp_parse_url($data['video'], PHP_URL_PATH);
+                $ext  = $path ? strtolower(pathinfo($path, PATHINFO_EXTENSION)) : '';
+                if (in_array($ext, ['mp4','m4v','mov','webm','ogv'], true)) {
+                    $embed = wp_video_shortcode(['src' => esc_url($data['video'])]);
+                } else {
+                    $embed = sprintf(
+                        '<p><a class="sg-niche-popup__video-link" href="%s" target="_blank" rel="noopener">%s</a></p>',
+                        esc_url($data['video']),
+                        esc_html__('Video ansehen', 'sg-montagerechner')
+                    );
+                }
+            }
+            if ($embed) {
+                $video_html = '<div class="sg-niche-popup__video">' . $embed . '</div>';
+            }
+        }
+
+        $content_html = '';
+        if (!empty($data['content'])) {
+            $content_html = '<div class="sg-niche-popup__text">' . apply_filters('the_content', $data['content']) . '</div>';
+        }
+
+        if ($video_html === '' && $content_html === '') {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div class="sg-niche-popup-wrap">
+            <button class="sg-niche-btn" type="button" data-target="<?php echo esc_attr($popup_id); ?>" aria-haspopup="dialog" aria-expanded="false">
+                <?php echo esc_html($button_label); ?>
+            </button>
+            <div class="sg-niche-popup" id="<?php echo esc_attr($popup_id); ?>" role="dialog" aria-modal="true" aria-hidden="true" hidden>
+                <div class="sg-niche-popup__overlay" data-popup-close></div>
+                <div class="sg-niche-popup__content" role="document">
+                    <button type="button" class="sg-niche-popup__close" aria-label="<?php echo esc_attr__('Popup schließen', 'sg-montagerechner'); ?>">&times;</button>
+                    <?php echo $video_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    <?php echo $content_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                </div>
+            </div>
+        </div>
+        <?php
         return ob_get_clean();
     }
 
