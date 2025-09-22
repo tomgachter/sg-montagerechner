@@ -105,30 +105,222 @@
   }
 
   function buildParamValues(state, mode) {
-    if (!state.prefill || typeof state.prefill !== 'object') {
-      return null;
+    var params = fallbackParamValues(state, mode);
+
+    if (state && state.prefill && typeof state.prefill === 'object') {
+      var mapping = state.prefill.mapping || {};
+      if (mapping && typeof mapping === 'object') {
+        var map = mapping[mode];
+        if (map && typeof map === 'object') {
+          Object.keys(map).forEach(function (sourceKey) {
+            var targetParam = map[sourceKey];
+            if (!targetParam) {
+              return;
+            }
+            var value = resolveFieldValue(state.prefill.fields, sourceKey);
+            if (value === '') {
+              return;
+            }
+            params[targetParam] = value;
+          });
+        }
+      }
     }
-    var mapping = state.prefill.mapping || {};
-    if (!mapping || typeof mapping !== 'object') {
-      return null;
+
+    return Object.keys(params).length ? params : null;
+  }
+
+  function fallbackParamValues(state, mode) {
+    var params = {};
+    var config = state && state.config && typeof state.config === 'object' ? state.config : {};
+    var prefill = state && state.prefill && typeof state.prefill === 'object' ? state.prefill : {};
+    var fields = prefill.fields && typeof prefill.fields === 'object' ? prefill.fields : {};
+    var stable = fields.stable && typeof fields.stable === 'object' ? fields.stable : {};
+    var routing = prefill.routing && typeof prefill.routing === 'object' ? prefill.routing : {};
+    var routerConfig = config.router && typeof config.router === 'object' ? config.router : {};
+    var routerMeta = prefill.router_meta && typeof prefill.router_meta === 'object' ? prefill.router_meta : {};
+    var token = prefill.token && typeof prefill.token === 'object' ? prefill.token : {};
+    var countsConfig = config.counts && typeof config.counts === 'object' ? config.counts : {};
+    var paramsConfig = config.params && typeof config.params === 'object' ? config.params : {};
+    var countsPrefill = prefill.counts && typeof prefill.counts === 'object' ? prefill.counts : {};
+    var serviceInfo = prefill.service && typeof prefill.service === 'object' ? prefill.service : {};
+
+    assignParam(params, ['order_id', 'order'], firstNonEmpty([
+      config.order,
+      prefill.order_id,
+      prefill.order && prefill.order.id,
+      stable.sg_order_id
+    ]));
+
+    assignParam(params, 'order_number', firstNonEmpty([
+      prefill.order_number,
+      stable.sg_order_number
+    ]));
+
+    var signature = firstNonEmpty([
+      config.sig,
+      token.sig,
+      stable.sg_token_sig
+    ]);
+    if (signature) {
+      assignParam(params, ['sig', 'signature', 'token', 'token_sig', 'sg_token_sig'], signature);
     }
-    var map = mapping[mode];
-    if (!map || typeof map !== 'object') {
-      return null;
+
+    assignParam(params, 'sg_token_ts', firstNonEmpty([
+      token.ts,
+      stable.sg_token_ts
+    ]));
+
+    assignParam(params, 'sg_token_hash', firstNonEmpty([
+      token.hash,
+      stable.sg_token_hash
+    ]));
+
+    var regionValue = firstNonEmpty([
+      config.region,
+      routing.region_key,
+      stable.sg_region_key
+    ]);
+    if (regionValue) {
+      assignParam(params, ['region', 'region_key'], regionValue);
     }
-    var paramValues = {};
-    Object.keys(map).forEach(function (sourceKey) {
-      var targetParam = map[sourceKey];
-      if (!targetParam) {
+
+    assignParam(params, 'region_label', firstNonEmpty([
+      routing.region_label,
+      stable.sg_region_label
+    ]));
+
+    var montageCount = firstNonEmpty([
+      paramsConfig.sgm,
+      countsConfig.m,
+      countsPrefill.m,
+      serviceInfo.montage_count,
+      stable.sg_service_montage,
+      stable.sg_service_m
+    ]);
+    if (montageCount) {
+      assignParam(params, ['sgm', 'm', 'sg_service_m', 'sg_service_montage'], montageCount);
+    }
+
+    var etageCount = firstNonEmpty([
+      paramsConfig.sge,
+      countsConfig.e,
+      countsPrefill.e,
+      serviceInfo.etage_count,
+      stable.sg_service_etage,
+      stable.sg_service_e
+    ]);
+    if (etageCount) {
+      assignParam(params, ['sge', 'e', 'sg_service_e', 'sg_service_etage'], etageCount);
+    }
+
+    var durationValue = firstNonEmpty([
+      prefill.duration_minutes,
+      serviceInfo.onsite_duration_minutes,
+      stable.sg_service_minutes,
+      routerConfig.duration_minutes,
+      routerMeta.duration_minutes
+    ]);
+    if (durationValue) {
+      assignParam(params, ['duration_minutes', 'sg_service_minutes'], durationValue);
+    }
+
+    var eventId = firstNonEmpty([
+      routerMeta.event_id,
+      routerConfig.event_id,
+      routing.event_id,
+      stable.sg_event_id
+    ]);
+    if (eventId) {
+      assignParam(params, ['event_id', 'calendar_event_id'], eventId);
+    }
+
+    var calendarId = firstNonEmpty([
+      routerMeta.calendar_id,
+      routerConfig.calendar_id,
+      routing.calendar_id,
+      stable.sg_calendar_id
+    ]);
+    if (calendarId) {
+      assignParam(params, 'calendar_id', calendarId);
+    }
+
+    var teamId = firstNonEmpty([
+      routerMeta.team,
+      routerMeta.team_id,
+      routerConfig.team,
+      routerConfig.team_id,
+      routing.team_id,
+      stable.sg_team_id
+    ]);
+    if (teamId) {
+      assignParam(params, ['team', 'team_id'], teamId);
+    }
+
+    assignParam(params, 'team_label', firstNonEmpty([
+      routerMeta.team_label,
+      routerConfig.team_label,
+      routing.team_label,
+      stable.sg_team_label
+    ]));
+
+    var strategyValue = firstNonEmpty([
+      routerMeta.strategy,
+      routerConfig.strategy,
+      routing.strategy,
+      stable.sg_router_strategy
+    ]);
+    if (strategyValue) {
+      assignParam(params, ['strategy', 'router_strategy', 'sg_router_strategy'], strategyValue);
+    }
+
+    var driveMinutes = firstNonEmpty([
+      routerMeta.drive_minutes,
+      routerConfig.drive_minutes,
+      routing.drive_minutes,
+      stable.sg_router_drive_minutes
+    ]);
+    if (driveMinutes) {
+      assignParam(params, ['drive_minutes', 'sg_router_drive_minutes'], driveMinutes);
+    }
+
+    if (mode) {
+      assignParam(params, ['mode', 'service'], mode);
+    }
+
+    return params;
+  }
+
+  function assignParam(target, keys, value) {
+    if (!target) {
+      return;
+    }
+    var normalized = normalize(value);
+    if (normalized === '') {
+      return;
+    }
+    if (!Array.isArray(keys)) {
+      keys = [keys];
+    }
+    keys.forEach(function (key) {
+      if (!key) {
         return;
       }
-      var value = resolveFieldValue(state.prefill.fields, sourceKey);
-      if (value === '') {
-        return;
-      }
-      paramValues[targetParam] = value;
+      target[key] = normalized;
     });
-    return Object.keys(paramValues).length ? paramValues : null;
+  }
+
+  function firstNonEmpty(values) {
+    if (!Array.isArray(values)) {
+      return '';
+    }
+    for (var i = 0; i < values.length; i++) {
+      var normalized = normalize(values[i]);
+      if (normalized !== '') {
+        return normalized;
+      }
+    }
+    return '';
   }
 
   var fieldAliases = {
