@@ -201,7 +201,77 @@
         return value < 10 ? '0' + value : String(value);
     }
 
+    function extractTimeLabel(raw) {
+        if (raw === null || raw === undefined) {
+            return '';
+        }
+        var match = String(raw).match(/(\d{1,2}:\d{2})/);
+        return match ? match[1] : '';
+    }
+
+    function normalizeStartLabel(raw) {
+        if (!raw && raw !== 0) {
+            return '';
+        }
+        var normalized = extractTimeLabel(raw);
+        if (normalized) {
+            return normalized;
+        }
+        if (typeof raw === 'string') {
+            return raw.trim();
+        }
+        return String(raw);
+    }
+
+    function normalizeEndLabel(raw) {
+        var normalized = extractTimeLabel(raw);
+        if (normalized) {
+            return normalized;
+        }
+        if (typeof raw === 'string') {
+            return raw.trim();
+        }
+        return '';
+    }
+
+    function endLabelFromLookup(startLabel) {
+        if (!startLabel || !slotLookup || !slotLookup.length) {
+            return '';
+        }
+        var normalizedStart = normalizeStartLabel(startLabel);
+        for (var i = 0; i < slotLookup.length; i++) {
+            var slot = slotLookup[i];
+            if (!slot) {
+                continue;
+            }
+            var slotStart = normalizeStartLabel(slot.start_label);
+            if (!slotStart && slot.start_time) {
+                slotStart = normalizeStartLabel(slot.start_time);
+            }
+            if (!slotStart && slot.start) {
+                slotStart = normalizeStartLabel(slot.start);
+            }
+            if (!slotStart && slot.startLabel) {
+                slotStart = normalizeStartLabel(slot.startLabel);
+            }
+            if (!slotStart) {
+                continue;
+            }
+            if (slotStart === normalizedStart) {
+                var lookupEnd = normalizeEndLabel(slot.end_label || slot.endLabel || slot.end_time || slot.end);
+                if (lookupEnd) {
+                    return lookupEnd;
+                }
+            }
+        }
+        return '';
+    }
+
     function computeEndLabel(startLabel) {
+        var lookupEnd = endLabelFromLookup(startLabel);
+        if (lookupEnd) {
+            return lookupEnd;
+        }
         var startMinutes = timeToMinutes(startLabel);
         if (startMinutes === null) {
             return '';
@@ -217,7 +287,7 @@
     }
 
     function applyManualLabels() {
-        if (!durationMinutes) {
+        if (!durationMinutes && (!slotLookup || !slotLookup.length)) {
             return;
         }
 
@@ -257,6 +327,7 @@
                 continue;
             }
 
+            startLabel = normalizeStartLabel(startLabel);
             var startMinutes = timeToMinutes(startLabel);
             if (startMinutes === null) {
                 continue;
@@ -266,6 +337,8 @@
             if (!endLabel) {
                 continue;
             }
+
+            endLabel = normalizeEndLabel(endLabel);
 
             var finalLabel = startLabel + rangeSeparator + endLabel;
             if (labelNode.textContent.trim() !== finalLabel) {
@@ -356,22 +429,31 @@
             start = start || parts[0].trim();
             end = end || parts[1].trim();
         }
+        if (!end && start) {
+            end = endLabelFromLookup(start);
+        }
+        if (start) {
+            start = normalizeStartLabel(start);
+        }
+        if (end) {
+            end = normalizeEndLabel(end);
+        }
         if (!start || !end) {
             return;
         }
         for (var i = 0; i < summarySelectors.length; i++) {
-        var summaries;
-        try {
-            summaries = document.querySelectorAll(summarySelectors[i]);
-        } catch (error) {
-            summaries = [];
-        }
-        if (!summaries || !summaries.length) {
-            continue;
-        }
-        for (var j = 0; j < summaries.length; j++) {
-            var node = summaries[j];
-            if (!node) {
+            var summaries;
+            try {
+                summaries = document.querySelectorAll(summarySelectors[i]);
+            } catch (error) {
+                summaries = [];
+            }
+            if (!summaries || !summaries.length) {
+                continue;
+            }
+            for (var j = 0; j < summaries.length; j++) {
+                var node = summaries[j];
+                if (!node) {
                 continue;
             }
             var datePart = node.getAttribute('data-sgmr-date');
@@ -607,12 +689,23 @@
         if (!text) {
             return null;
         }
+        var normalizedText = normalizeStartLabel(text);
         for (var i = 0; i < slotLookup.length; i++) {
             var slot = slotLookup[i];
-            if (!slot.start_label) {
+            if (!slot) {
                 continue;
             }
-            if (text.indexOf(slot.start_label) === 0) {
+            var slotStart = normalizeStartLabel(slot.start_label || slot.startLabel || slot.start_time || slot.start);
+            if (!slotStart) {
+                continue;
+            }
+            if (normalizedText === slotStart) {
+                return slot;
+            }
+            if (typeof text === 'string' && text.indexOf(slotStart) === 0) {
+                return slot;
+            }
+            if (slot.start_label && text.indexOf(slot.start_label) === 0) {
                 return slot;
             }
             if (slot.start_time && text.indexOf(slot.start_time) === 0) {
@@ -663,13 +756,26 @@
         if ((!slot || !slot.start_label || !slot.end_label) && durationMinutes) {
             slot = buildFallbackSlot(element, originalText);
         }
-        if (!slot || !slot.start_label || !slot.end_label) {
+        if (!slot) {
             return;
         }
-        var rangeText = slot.start_label + rangeSeparator + slot.end_label;
+        var slotStartLabel = slot.start_label && typeof slot.start_label === 'string' && slot.start_label.trim() ? slot.start_label.trim() : '';
+        if (!slotStartLabel) {
+            slotStartLabel = normalizeStartLabel(slot.startLabel || slot.start_time || slot.start || originalText);
+        }
+        var slotEndLabel = slot.end_label && typeof slot.end_label === 'string' && slot.end_label.trim() ? slot.end_label.trim() : '';
+        if (!slotEndLabel) {
+            slotEndLabel = normalizeEndLabel(slot.endLabel || slot.end_time || slot.end);
+        }
+        if (!slotStartLabel || !slotEndLabel) {
+            return;
+        }
+        slot.start_label = slotStartLabel;
+        slot.end_label = slotEndLabel;
+        var rangeText = slotStartLabel + rangeSeparator + slotEndLabel;
         var updatedText = originalText;
-        if (originalText.indexOf(slot.start_label) !== -1) {
-            updatedText = originalText.replace(slot.start_label, rangeText);
+        if (typeof originalText === 'string' && originalText.indexOf(slotStartLabel) !== -1) {
+            updatedText = originalText.replace(slotStartLabel, rangeText);
         } else {
             updatedText = rangeText;
         }
@@ -679,6 +785,8 @@
         target.textContent = updatedText;
         if (element.setAttribute) {
             element.setAttribute('data-sgmr-augmented', '1');
+            element.setAttribute('data-sgmr-start', slotStartLabel);
+            element.setAttribute('data-sgmr-end', slotEndLabel);
         }
         if (element.hasAttribute && element.hasAttribute('aria-label')) {
             element.setAttribute('aria-label', updatedText);
@@ -723,10 +831,6 @@
                 applyRangeToElement(elements[j]);
             }
         }
-    }
-
-    function pad(value) {
-        return value < 10 ? '0' + value : String(value);
     }
 
     function extractSlotDetails(element, text) {
