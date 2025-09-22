@@ -577,14 +577,49 @@ class FluentBookingAugmentor
             if (!is_array($daySlots)) {
                 continue;
             }
+
+            $candidates = [];
+            foreach ($daySlots as $entry) {
+                if (is_array($entry)) {
+                    $candidates[] = $entry;
+                }
+            }
+
+            if (!$candidates) {
+                continue;
+            }
+
+            usort($candidates, function (array $left, array $right): int {
+                $leftTs = $this->slotStartTimestamp($left);
+                $rightTs = $this->slotStartTimestamp($right);
+                if ($leftTs === $rightTs) {
+                    $leftStart = $this->slotStartString($left);
+                    $rightStart = $this->slotStartString($right);
+
+                    $comparison = $leftStart <=> $rightStart;
+                    if ($comparison !== 0) {
+                        return $comparison;
+                    }
+
+                    $leftIndex = $this->slotScalarValue($left, 'index');
+                    $rightIndex = $this->slotScalarValue($right, 'index');
+                    if ($leftIndex !== null && $rightIndex !== null) {
+                        return (int) $leftIndex <=> (int) $rightIndex;
+                    }
+
+                    return 0;
+                }
+
+                return $leftTs <=> $rightTs;
+            });
+
             $filtered = [];
             $lastEndTs = null;
-            foreach ($daySlots as $entry) {
-                if (!is_array($entry) || empty($entry['start'])) {
+            foreach ($candidates as $entry) {
+                $startTime = $this->slotStartString($entry);
+                if ($startTime === '') {
                     continue;
                 }
-                $startTime = (string) $entry['start'];
-                $endTime = !empty($entry['end']) ? (string) $entry['end'] : gmdate('Y-m-d H:i:s', strtotime($startTime) + ($duration * MINUTE_IN_SECONDS));
                 $startTs = strtotime($startTime);
                 if ($startTs === false) {
                     continue;
@@ -592,11 +627,8 @@ class FluentBookingAugmentor
                 if ($lastEndTs !== null && $startTs < $lastEndTs) {
                     continue;
                 }
-                $endTs = strtotime($endTime);
-                if ($endTs === false) {
-                    $endTs = $startTs + ($duration * MINUTE_IN_SECONDS);
-                    $endTime = gmdate('Y-m-d H:i:s', $endTs);
-                }
+
+                [$endTime, $endTs] = $this->slotEndDetails($entry, $startTs, $duration);
 
                 $startDt = $this->createDateTime($startTime, $tz);
                 $endDt = $this->createDateTime($endTime, $tz);
@@ -627,6 +659,155 @@ class FluentBookingAugmentor
         unset($daySlots);
 
         return $slots;
+    }
+
+    /**
+     * @param array<string, mixed> $slot
+     */
+    private function slotStartString(array $slot): string
+    {
+        $keys = [
+            'start',
+            'start_time',
+            'startTime',
+            'start_at',
+            'startAt',
+            'slot_time',
+            'slotTime',
+            'slot_start',
+            'slotStart',
+            'start_date_time',
+            'startDateTime',
+            'start_datetime',
+        ];
+
+        foreach ($keys as $key) {
+            $value = $this->slotScalarValue($slot, $key);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        $date = $this->slotScalarValue($slot, 'date');
+        if ($date !== null) {
+            $timeKeys = ['time', 'start_label', 'startLabel'];
+            foreach ($timeKeys as $timeKey) {
+                $time = $this->slotScalarValue($slot, $timeKey);
+                if ($time !== null) {
+                    $composed = trim($date . ' ' . $time);
+                    if ($composed !== '') {
+                        return $composed;
+                    }
+                }
+            }
+        }
+
+        $label = $this->slotScalarValue($slot, 'start_label');
+        if ($label !== null) {
+            return $label;
+        }
+
+        $label = $this->slotScalarValue($slot, 'startLabel');
+        if ($label !== null) {
+            return $label;
+        }
+
+        return '';
+    }
+
+    /**
+     * @param mixed $slot
+     */
+    private function slotStartTimestamp($slot): int
+    {
+        if (!is_array($slot)) {
+            return PHP_INT_MAX;
+        }
+
+        $start = $this->slotStartString($slot);
+        if ($start === '') {
+            return PHP_INT_MAX;
+        }
+
+        $timestamp = strtotime($start);
+        if ($timestamp === false) {
+            return PHP_INT_MAX;
+        }
+
+        return $timestamp;
+    }
+
+    /**
+     * @param array<string, mixed> $slot
+     * @return array{0: string, 1: int}
+     */
+    private function slotEndDetails(array $slot, int $startTs, int $duration): array
+    {
+        $keys = [
+            'end',
+            'end_time',
+            'endTime',
+            'end_at',
+            'endAt',
+            'slot_end',
+            'slotEnd',
+            'end_date_time',
+            'endDateTime',
+            'end_datetime',
+        ];
+
+        foreach ($keys as $key) {
+            $value = $this->slotScalarValue($slot, $key);
+            if ($value === null) {
+                continue;
+            }
+
+            $timestamp = strtotime($value);
+            if ($timestamp !== false) {
+                return [$value, $timestamp];
+            }
+        }
+
+        $date = $this->slotScalarValue($slot, 'date');
+        if ($date !== null) {
+            $timeKeys = ['end_label', 'endLabel'];
+            foreach ($timeKeys as $timeKey) {
+                $time = $this->slotScalarValue($slot, $timeKey);
+                if ($time !== null) {
+                    $composed = trim($date . ' ' . $time);
+                    if ($composed !== '') {
+                        $timestamp = strtotime($composed);
+                        if ($timestamp !== false) {
+                            return [$composed, $timestamp];
+                        }
+                    }
+                }
+            }
+        }
+
+        $endTs = $startTs + ($duration * MINUTE_IN_SECONDS);
+        $endTime = gmdate('Y-m-d H:i:s', $endTs);
+
+        return [$endTime, $endTs];
+    }
+
+    /**
+     * @param array<string, mixed> $slot
+     */
+    private function slotScalarValue(array $slot, string $key): ?string
+    {
+        if (!array_key_exists($key, $slot)) {
+            return null;
+        }
+
+        $value = $slot[$key];
+        if (!is_scalar($value)) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     /**
