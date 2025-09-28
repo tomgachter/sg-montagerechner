@@ -13,6 +13,7 @@ use SGMR\Booking\RouterState;
 use SGMR\Booking\PrefillManager;
 use SGMR\Booking\WebhookController;
 use SGMR\Checkout\Fields;
+use SGMR\Checkout\PickupPaymentGateway;
 use SGMR\Integrations\PrefillController;
 use SGMR\Integrations\WooStatuses;
 use SGMR\Routing\DistanceProvider;
@@ -30,6 +31,7 @@ use SGMR\Assets;
 use function absint;
 use function add_action;
 use function add_query_arg;
+use function class_exists;
 use function get_option;
 use function remove_query_arg;
 use function sanitize_key;
@@ -152,6 +154,7 @@ class Plugin
         add_filter('woocommerce_email_classes', [EmailService::class, 'register']);
         add_filter('query_vars', [$this, 'filterQueryVars']);
         add_action('template_redirect', [$this, 'redirectLegacyBookingParams'], 1);
+        add_filter('woocommerce_payment_gateways', [$this, 'registerPaymentGateways']);
         add_filter('sg_mr_logging_enabled', static function (bool $enabled): bool {
             if ($enabled) {
                 return true;
@@ -162,6 +165,16 @@ class Plugin
             $settings = Settings::getSettings();
             return !empty($settings['logging_extended']);
         });
+    }
+
+    public function registerPaymentGateways(array $gateways): array
+    {
+        if (!class_exists('\\WC_Payment_Gateway')) {
+            return $gateways;
+        }
+
+        $gateways[] = PickupPaymentGateway::class;
+        return $gateways;
     }
  
     public static function instance(): self

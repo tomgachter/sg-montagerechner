@@ -107,6 +107,24 @@ class CartService
         return false;
     }
 
+    public static function selectionHasPickup(array $selection): bool
+    {
+        foreach ($selection as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            if (($row['mode'] ?? '') === 'abholung') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static function cartHasPickup(): bool
+    {
+        return self::selectionHasPickup(self::cartSelection());
+    }
+
     public static function cartForceOffline(): bool
     {
         if (!self::cartHasService()) {
@@ -357,5 +375,11 @@ class CartService
             }
         }
         return false;
+    }
+
+    public static function orderHasPickup(WC_Order $order): bool
+    {
+        $selection = $order->get_meta(self::META_SELECTION);
+        return is_array($selection) && self::selectionHasPickup($selection);
     }
 }
