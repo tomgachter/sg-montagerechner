@@ -2,7 +2,7 @@
 
 namespace SGMR\Services;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use WC_Order;
 use function absint;
 use function get_option;
@@ -48,7 +48,7 @@ class ScheduleService
     }
 
     public static function findConsecutiveFreeSlots(
-        FluentBookingClient $client,
+        BookingConfig $client,
         string $team,
         string $date,
         int $startIndex,
@@ -74,7 +74,7 @@ class ScheduleService
     }
 
     public static function findBestSequenceToday(
-        FluentBookingClient $client,
+        BookingConfig $client,
         string $region,
         array $teamOrder,
         string $date,
@@ -119,7 +119,7 @@ class ScheduleService
     }
 
     private static function probeTeam(
-        FluentBookingClient $client,
+        BookingConfig $client,
         string $team,
         string $date,
         int $startIndex,
@@ -134,7 +134,7 @@ class ScheduleService
      * @param array<string, mixed> $context
      */
     private static function slotAllowsRequirements(
-        FluentBookingClient $client,
+        BookingConfig $client,
         string $team,
         string $date,
         int $slotIndex,

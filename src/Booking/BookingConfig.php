@@ -8,7 +8,7 @@ use SGMR\Services\BookingLink;
 use SGMR\Utils\PostcodeHelper;
 use WC_Order;
 
-class FluentBookingClient
+class BookingConfig
 {
     public function settings(): array
     {
@@ -18,7 +18,15 @@ class FluentBookingClient
             'region_events' => [],
             'region_days' => [],
         ];
-        $stored = get_option(Plugin::OPTION_FB_MAPPING, []);
+        $stored = get_option(Plugin::OPTION_BOOKING_MAPPING, null);
+        if ($stored === null) {
+            $legacy = get_option('sg_fb_mapping', null);
+            if (is_array($legacy)) {
+                update_option(Plugin::OPTION_BOOKING_MAPPING, $legacy, true);
+                delete_option('sg_fb_mapping');
+                $stored = $legacy;
+            }
+        }
         if (!is_array($stored)) {
             return $defaults;
         }
@@ -73,7 +81,15 @@ class FluentBookingClient
         if (!$teams) {
             return null;
         }
-        $state = get_option('sg_fb_rr_state', []);
+        $state = get_option('sg_booking_rr_state', null);
+        if (!is_array($state)) {
+            $legacy = get_option('sg_fb_rr_state', null);
+            if (is_array($legacy)) {
+                update_option('sg_booking_rr_state', $legacy, false);
+                delete_option('sg_fb_rr_state');
+                $state = $legacy;
+            }
+        }
         if (!is_array($state)) {
             $state = [];
         }
@@ -93,12 +109,19 @@ class FluentBookingClient
         if (!in_array($team, $teams, true)) {
             return;
         }
-        $state = get_option('sg_fb_rr_state', []);
+        $state = get_option('sg_booking_rr_state', null);
+        if (!is_array($state)) {
+            $legacy = get_option('sg_fb_rr_state', null);
+            if (is_array($legacy)) {
+                $state = $legacy;
+                delete_option('sg_fb_rr_state');
+            }
+        }
         if (!is_array($state)) {
             $state = [];
         }
         $state[$region] = $team;
-        update_option('sg_fb_rr_state', $state, false);
+        update_option('sg_booking_rr_state', $state, false);
     }
 
     /**
@@ -107,13 +130,13 @@ class FluentBookingClient
     public function slotIsFree(string $teamKey, string $date, int $slotIndex, array $context = []): bool
     {
         $default = true;
-        return (bool) apply_filters('sg_mr_fb_slot_is_free', $default, $teamKey, $date, $slotIndex, $context);
+        return (bool) apply_filters('sg_mr_slot_is_free', $default, $teamKey, $date, $slotIndex, $context);
     }
 
     public function slotBookings(string $teamKey, string $date, int $slotIndex): array
     {
         $default = ['montage' => 0, 'etage' => 0];
-        $bookings = apply_filters('sg_mr_fb_slot_bookings', $default, $teamKey, $date, $slotIndex);
+        $bookings = apply_filters('sg_mr_slot_bookings', $default, $teamKey, $date, $slotIndex);
         if (!is_array($bookings)) {
             $bookings = $default;
         }
@@ -124,7 +147,7 @@ class FluentBookingClient
 
     public function createSlotBooking(array $payload): void
     {
-        do_action_ref_array('sg_mr_fb_create_slot_booking', [&$payload]);
+        do_action_ref_array('sg_mr_create_slot_booking', [&$payload]);
     }
 
     public function buildBookingLink(WC_Order $order): ?string

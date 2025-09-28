@@ -2,7 +2,7 @@
 
 namespace SGMR\Shortcodes;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use SGMR\Booking\HybridRouter;
 use SGMR\Booking\PrefillManager;
 use SGMR\Admin\Settings;
@@ -21,13 +21,13 @@ use function sgmr_validate_booking_signature;
 
 class AutoBookingShortcode
 {
-    private FluentBookingClient $client;
+    private BookingConfig $client;
     private PrefillManager $prefillManager;
     private RegionDayPlanner $regionDayPlanner;
     private HybridRouter $router;
     private static bool $scriptEnqueued = false;
 
-    public function __construct(FluentBookingClient $client, PrefillManager $prefillManager, RegionDayPlanner $regionDayPlanner, HybridRouter $router)
+    public function __construct(BookingConfig $client, PrefillManager $prefillManager, RegionDayPlanner $regionDayPlanner, HybridRouter $router)
     {
         $this->client = $client;
         $this->prefillManager = $prefillManager;
@@ -173,7 +173,7 @@ class AutoBookingShortcode
         if (empty($selectors)) {
             $maxTeams = max(1, min($this->regionDayPlanner->maxTeams($normalizedRegion), 4));
             $teamSelectors = $this->buildTeamSelectors($normalizedRegion, $modes, $maxTeams);
-            $mapping = get_option(Plugin::OPTION_FB_MAPPING, []);
+            $mapping = get_option(Plugin::OPTION_BOOKING_MAPPING, []);
             $selectors = $teamSelectors;
             $selectorMode = 'teams';
 
@@ -605,7 +605,7 @@ class AutoBookingShortcode
             return [];
         }
         $endpoints = [
-            'prefill' => esc_url_raw(rest_url('sgmr/v1/fluent-booking/prefill')),
+            'prefill' => esc_url_raw(rest_url('sgmr/v1/booking/prefill')),
         ];
         return $endpoints;
     }

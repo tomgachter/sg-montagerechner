@@ -2,13 +2,13 @@
 
 namespace SGMR\Shortcodes;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 
 class BookingShortcodes
 {
-    private FluentBookingClient $client;
+    private BookingConfig $client;
 
-    public function __construct(FluentBookingClient $client)
+    public function __construct(BookingConfig $client)
     {
         $this->client = $client;
     }

@@ -2,7 +2,7 @@
 
 namespace SGMR\Order;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use SGMR\Plugin;
 use SGMR\Services\CartService;
 use SGMR\Services\Environment;
@@ -20,7 +20,7 @@ class Triggers
     public const EMAIL_SLUG_OFFLINE = 'offline';
     public const EMAIL_SLUG_PAID_WAIT = 'paid_wait';
 
-    private FluentBookingClient $bookingClient;
+    private BookingConfig $bookingClient;
     /** @var array<string,string> */
     private array $legacyMailMeta = [
         self::EMAIL_SLUG_INSTANT => '_sgmr_mail_instant_sent',
@@ -29,7 +29,7 @@ class Triggers
         self::EMAIL_SLUG_PAID_WAIT => '_sgmr_mail_paid_wait_sent',
     ];
 
-    public function __construct(FluentBookingClient $bookingClient)
+    public function __construct(BookingConfig $bookingClient)
     {
         $this->bookingClient = $bookingClient;
     }

@@ -2,7 +2,7 @@
 
 namespace SGMR\Admin;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use SGMR\Booking\PrefillManager;
 use SGMR\Booking\RouterState;
 use SGMR\Region\RegionDayPlanner;
@@ -62,7 +62,7 @@ class Settings
     private RouterState $routerState;
 
     public function __construct(
-        FluentBookingClient $client,
+        BookingConfig $client,
         RegionResolver $regionResolver,
         PrefillManager $prefillManager,
         RegionDayPlanner $regionDayPlanner,
@@ -199,7 +199,6 @@ class Settings
             'weight_gate' => 2.0,
             'montage_duration_minutes' => 120,
             'etage_duration_minutes' => 60,
-            'frontend_duration_override' => true,
             'logging_extended' => false,
             'phone_category_slugs' => ['dusch-wc', 'food-center', 'boiler'],
             'priorities' => $priorities,
@@ -218,7 +217,6 @@ class Settings
         $settings['weight_gate'] = self::clampFloat($input['weight_gate'] ?? $defaults['weight_gate'], 0.0, 10.0);
         $settings['montage_duration_minutes'] = self::clampInt($input['montage_duration_minutes'] ?? $defaults['montage_duration_minutes'], 10, 600);
         $settings['etage_duration_minutes'] = self::clampInt($input['etage_duration_minutes'] ?? $defaults['etage_duration_minutes'], 10, 600);
-        $settings['frontend_duration_override'] = self::normalizeFlagValue($input['frontend_duration_override'] ?? $defaults['frontend_duration_override'], (bool) $defaults['frontend_duration_override']);
         $settings['logging_extended'] = self::normalizeFlagValue($input['logging_extended'] ?? $defaults['logging_extended'], (bool) $defaults['logging_extended']);
 
         $settings['phone_category_slugs'] = self::sanitizePhoneSlugs($input['phone_category_slugs'] ?? $defaults['phone_category_slugs']);
@@ -384,7 +382,7 @@ class Settings
 
             <hr>
             <h4><?php esc_html_e('Service-Dauern', 'sg-mr'); ?></h4>
-            <p><?php esc_html_e('Steuert die Dauer je Auftrag für die automatische Terminierung und FluentBooking.', 'sg-mr'); ?></p>
+            <p><?php esc_html_e('Steuert die Dauer je Auftrag für die automatische Terminierung.', 'sg-mr'); ?></p>
             <p>
                 <label><strong><?php esc_html_e('Voreinstellung', 'sg-mr'); ?></strong></label><br>
                 <label style="margin-right:1em;">
@@ -409,24 +407,16 @@ class Settings
                 <input type="number" min="10" max="600" id="sgmr_duration_etage" name="<?php echo esc_attr(self::OPTION_NAME); ?>[etage_duration_minutes]" value="<?php echo esc_attr((string) $etageDuration); ?>" class="small-text" />
             </p>
             <hr>
-            <h4><?php esc_html_e('FluentBooking Ausgabe & Debug', 'sg-mr'); ?></h4>
-            <p><?php esc_html_e('Steuert, ob das öffentliche FluentBooking-Frontend unsere Dauer-/Slot-Anzeige nutzt und ob detaillierte Logs geschrieben werden.', 'sg-mr'); ?></p>
-            <p>
-                <input type="hidden" name="<?php echo esc_attr(self::OPTION_NAME); ?>[frontend_duration_override]" value="0" />
-                <label>
-                    <input type="checkbox" name="<?php echo esc_attr(self::OPTION_NAME); ?>[frontend_duration_override]" value="1" <?php checked(true, (bool) $settings['frontend_duration_override']); ?> />
-                    <?php esc_html_e('Fluent-Frontend: Dauer & Slot-Labels mit SGMR-Daten überschreiben', 'sg-mr'); ?>
-                </label>
-            </p>
-            <p class="description"><?php esc_html_e('Aktivieren, um Kunden im Fluent-Frontend Start–Ende-Zeiten und konsistente Dauerangaben zu zeigen.', 'sg-mr'); ?></p>
+            <h4><?php esc_html_e('Diagnose & Logging', 'sg-mr'); ?></h4>
+            <p><?php esc_html_e('Ermöglicht detailliertere Log-Ausgaben für die automatische Terminierung und API-Webhooks.', 'sg-mr'); ?></p>
             <p>
                 <input type="hidden" name="<?php echo esc_attr(self::OPTION_NAME); ?>[logging_extended]" value="0" />
                 <label>
                     <input type="checkbox" name="<?php echo esc_attr(self::OPTION_NAME); ?>[logging_extended]" value="1" <?php checked(true, (bool) $settings['logging_extended']); ?> />
-                    <?php esc_html_e('Erweitertes Logging für FluentBooking aktivieren', 'sg-mr'); ?>
+                    <?php esc_html_e('Erweitertes Logging aktivieren', 'sg-mr'); ?>
                 </label>
             </p>
-            <p class="description"><?php esc_html_e('Schreibt zusätzliche Einträge (fluent_booking_request/response, fb_public_event_vars, status_transition) in debug.log. Für längere Zeiträume deaktivieren.', 'sg-mr'); ?></p>
+            <p class="description"><?php esc_html_e('Schreibt zusätzliche Einträge (z. B. API-Kommunikation, Webhook-Status) in die debug.log. Für längere Zeiträume deaktivieren.', 'sg-mr'); ?></p>
             <script>
             (function () {
                 if (window.sgmrDurationPresetInit) {
@@ -471,7 +461,7 @@ class Settings
         ?>
         <label for="sgmr_logging_enabled">
             <input type="checkbox" id="sgmr_logging_enabled" name="sgmr_logging_enabled" value="1" <?php checked(1, $enabled); ?> />
-            <?php esc_html_e('Diagnose-Logging in debug.log aktivieren (FluentBooking & Webhook).', 'sg-mr'); ?>
+            <?php esc_html_e('Diagnose-Logging in debug.log aktivieren.', 'sg-mr'); ?>
         </label>
         <p class="description"><?php esc_html_e('Nur für kurzfristige Analysen aktivieren – schreibt sensible Daten ins Debug-Log.', 'sg-mr'); ?></p>
         <?php

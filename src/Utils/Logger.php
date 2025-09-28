@@ -6,8 +6,8 @@ namespace SGMR\Utils;
  * Lightweight debug logger.
  *
  * Typical log keys include:
- * - fluent_booking_request / fluent_booking_response
- * - fb_public_event_vars
+ * - booking_request / booking_response
+ * - booking_public_event_vars
  * - status_transition
  * - webhook_* (booking lifecycle)
  */

@@ -37,13 +37,13 @@ class PrefillController
     public static function register(): void
     {
         add_action('rest_api_init', static function (): void {
-            register_rest_route('sgmr/v1', '/fluent-booking/prefill', [
+            register_rest_route('sgmr/v1', '/booking/prefill', [
                 'methods' => 'GET',
                 'callback' => [__CLASS__, 'handle'],
                 'permission_callback' => '__return_true',
             ]);
 
-            register_rest_route('sgmr/v1', '/fluent-booking/prefill', [
+            register_rest_route('sgmr/v1', '/booking/prefill', [
                 'methods' => 'POST',
                 'callback' => [__CLASS__, 'handlePost'],
                 'permission_callback' => '__return_true',

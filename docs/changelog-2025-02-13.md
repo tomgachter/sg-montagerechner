@@ -1,9 +1,9 @@
 # Changelog – 13.02.2025
 
-## Fluent Booking Oberfläche
-- Dauerüberschreibung via Server-Hooks (`fluent_booking/public_event_vars`) mit korrekten Minuten/Labels.
+## Online-Buchung Oberfläche
+- Dauerüberschreibung via Server-Hooks mit korrekten Minuten/Labels.
 - Slot-Labels zeigen nun `Start – Ende`; Fallback-JS aktualisiert bestehende DOM-Knoten.
-- E-Mail/Bestätigungen greifen auf `fluent_booking/booking_time_text` zu und liefern lokalisierte Zeitspannen.
+- E-Mail/Bestätigungen greifen auf zentrale Formatierungsfunktionen zu und liefern lokalisierte Zeitspannen.
 - ICS-Einträge übernehmen Titel `{PLZ} – {Name} – {Telefon}` und Beschreibung inkl. Adresse, Services, Gebühren/Versand.
 
 ## WooCommerce Statusfluss

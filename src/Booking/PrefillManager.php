@@ -93,7 +93,7 @@ class PrefillManager
      */
     public function mappingAll(): array
     {
-        $settings = get_option(Plugin::OPTION_FB_MAPPING, []);
+        $settings = get_option(Plugin::OPTION_BOOKING_MAPPING, []);
         if (!is_array($settings)) {
             $settings = [];
         }
@@ -673,7 +673,7 @@ class PrefillManager
         $region = sanitize_key($region);
         $modeKey = $service['montage_count'] > 0 ? 'montage' : 'etage';
 
-        $settings = get_option(Plugin::OPTION_FB_MAPPING, []);
+        $settings = get_option(Plugin::OPTION_BOOKING_MAPPING, []);
         $teamId = '';
         $teamLabel = '';
         $eventId = 0;
