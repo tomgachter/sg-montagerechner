@@ -2,9 +2,7 @@
 
 namespace SGMR;
 
-use SGMR\Admin\Settings;
 use function add_action;
-use function esc_html__;
 use function esc_url_raw;
 use function get_option;
 use function is_admin;
@@ -16,8 +14,7 @@ use function wp_localize_script;
 
 class Assets
 {
-    private const PREFILL_HANDLE = 'sgmr-fbp-prefill';
-    private const AUGMENT_HANDLE = 'sgmr-fbp-augment';
+    private const PREFILL_HANDLE = 'sgmr-booking-prefill';
 
     public function boot(): void
     {
@@ -39,7 +36,7 @@ class Assets
 
         wp_enqueue_script(
             self::PREFILL_HANDLE,
-            plugins_url('assets/js/sgmr-fbp-prefill.js', $pluginFile),
+            plugins_url('assets/js/sgmr-booking-prefill.js', $pluginFile),
             [],
             '1.1.0',
             true
@@ -47,36 +44,11 @@ class Assets
 
         wp_localize_script(
             self::PREFILL_HANDLE,
-            'sgmrFbpPrefill',
+            'sgmrBookingPrefill',
             [
-                'endpoint' => esc_url_raw(rest_url('sgmr/v1/fluent-booking/prefill')),
+                'endpoint' => esc_url_raw(rest_url('sgmr/v1/booking/prefill')),
                 'orderParamCandidates' => ['order', 'order_id', 'orderId', 'orderID'],
             ]
         );
-
-        $settings = Settings::getSettings();
-        $frontendOverrideEnabled = !empty($settings['frontend_duration_override']);
-
-        if ($frontendOverrideEnabled) {
-            wp_enqueue_script(
-                self::AUGMENT_HANDLE,
-                plugins_url('assets/js/sgmr-fbp-augment.js', $pluginFile),
-                [self::PREFILL_HANDLE],
-                '1.1.0',
-                true
-            );
-
-            wp_localize_script(
-                self::AUGMENT_HANDLE,
-                'sgmrFbpAugment',
-                [
-                    'durationLabelPrefix' => esc_html__('Dauer', 'sg-mr'),
-                    'rangeSeparator' => ' – ',
-                    'maxAttempts' => 25,
-                    'retryDelay' => 300,
-                    'durationMinutes' => 0,
-                ]
-            );
-        }
     }
 }

@@ -4,14 +4,10 @@ namespace SGMR;
 
 use SGMR\Admin\Settings;
 use SGMR\Admin\BookingGate;
-use SGMR\Booking\BookingOrchestrator;
-use SGMR\Booking\FluentBookingAugmentor;
-use SGMR\Booking\FluentBookingClient;
-use SGMR\Booking\FluentBookingConnector;
+use SGMR\Booking\BookingConfig;
 use SGMR\Booking\HybridRouter;
 use SGMR\Booking\RouterState;
 use SGMR\Booking\PrefillManager;
-use SGMR\Booking\WebhookController;
 use SGMR\Checkout\Fields;
 use SGMR\Integrations\PrefillController;
 use SGMR\Integrations\WooStatuses;
@@ -40,7 +36,7 @@ use function wp_unslash;
 
 class Plugin
 {
-    public const OPTION_FB_MAPPING = 'sg_fb_mapping';
+    public const OPTION_BOOKING_MAPPING = 'sg_booking_mapping';
     public const OPTION_REGIONS = 'sg_regions';
     public const OPTION_EMAIL_TEMPLATES = 'sg_email_templates';
     public const OPTION_MODE_OVERLAP_GUARD = 'sg_mode_overlap_guard';
@@ -49,10 +45,10 @@ class Plugin
     public const OPTION_REGION_ANCHORS = 'sg_region_anchors';
     public const OPTION_REGION_MAPPING = 'sg_region_mapping';
     public const OPTION_BOOKING_SECRET = 'sg_booking_secret';
-    public const OPTION_KEEP_SELECTOR_BOOKING = 'sg_fb_keep_selector';
+    public const OPTION_KEEP_SELECTOR_BOOKING = 'sg_booking_keep_selector';
     public const OPTION_REGION_WEEKPLAN = 'sg_region_weekplan';
     public const OPTION_REGION_DAY_POLICY = 'sg_region_day_policy';
-    public const OPTION_FB_API = 'sg_fb_api';
+    public const OPTION_BOOKING_API = 'sg_booking_api';
     public const OPTION_ROUTER_HORIZON = 'sgmr_router_horizon_days';
     public const OPTION_ROUTER_DISTANCE_THRESHOLD = 'sgmr_router_distance_threshold';
     public const OPTION_ROUTER_PRIORITY = 'sgmr_router_priority';
@@ -73,22 +69,18 @@ class Plugin
  
     private static ?self $instance = null;
  
-    private FluentBookingClient $bookingClient;
+    private BookingConfig $bookingClient;
     private Fields $checkoutFields;
     private Triggers $orderTriggers;
     private BookingShortcodes $shortcodes;
     private AutoBookingShortcode $autoShortcode;
     private CompositeBookingController $compositeController;
-    private FluentBookingConnector $bookingConnector;
     private Settings $settings;
     private Assets $assets;
     private BookingGate $bookingGate;
     private RegionResolver $regionResolver;
     private RegionDayPlanner $regionDayPlanner;
     private PrefillManager $prefillManager;
-    private BookingOrchestrator $bookingOrchestrator;
-    private FluentBookingAugmentor $bookingAugmentor;
-    private WebhookController $webhookController;
     private HybridRouter $hybridRouter;
     private RouterState $routerState;
     private DistanceProvider $distanceProvider;
@@ -105,7 +97,7 @@ class Plugin
 
         $this->ensureDefaults();
 
-        $this->bookingClient = new FluentBookingClient();
+        $this->bookingClient = new BookingConfig();
         $this->prefillManager = new PrefillManager();
         $this->checkoutFields = new Fields($this->bookingClient);
         $this->orderTriggers = new Triggers($this->bookingClient);
@@ -120,11 +112,6 @@ class Plugin
         $this->assets = new Assets();
         $this->bookingGate = new BookingGate();
         $this->compositeController = new CompositeBookingController($this->bookingClient);
-        $this->bookingConnector = new FluentBookingConnector($this->bookingClient);
-        $keepSelector = (bool) get_option(self::OPTION_KEEP_SELECTOR_BOOKING, false);
-        $this->bookingOrchestrator = new BookingOrchestrator($this->bookingClient, $this->prefillManager, $keepSelector, $this->regionDayPlanner, $this->routerState, $this->bookingConnector);
-        $this->bookingAugmentor = new FluentBookingAugmentor($this->prefillManager);
-        $this->webhookController = new WebhookController($this->bookingClient, $this->prefillManager, $this->bookingOrchestrator, $this->regionDayPlanner);
         $this->wooStatuses = new WooStatuses();
 
         $this->bookingSecret = (string) get_option(self::OPTION_BOOKING_SECRET, '');
@@ -140,9 +127,6 @@ class Plugin
         $this->assets->boot();
         $this->bookingGate->boot();
         $this->compositeController->boot();
-        $this->bookingConnector->boot();
-        $this->webhookController->boot();
-        $this->bookingAugmentor->boot();
         PrefillController::register();
         $this->wooStatuses->boot();
 
@@ -360,25 +344,33 @@ class Plugin
             'aargau_sued_zentral' => 'aargau_sued_zentralschweiz',
         ];
 
-        $fbMapping = get_option(self::OPTION_FB_MAPPING, []);
-        if (!is_array($fbMapping)) {
-            $fbMapping = [];
+        $mapping = get_option(self::OPTION_BOOKING_MAPPING, null);
+        if ($mapping === null) {
+            $legacyMapping = get_option('sg_fb_mapping', []);
+            if (is_array($legacyMapping) && $legacyMapping) {
+                update_option(self::OPTION_BOOKING_MAPPING, $legacyMapping, true);
+                delete_option('sg_fb_mapping');
+                $mapping = $legacyMapping;
+            }
+        }
+        if (!is_array($mapping)) {
+            $mapping = [];
         }
         foreach ($slugMap as $legacy => $modern) {
-            if (isset($fbMapping['regions'][$legacy])) {
-                if (!isset($fbMapping['regions'][$modern])) {
-                    $fbMapping['regions'][$modern] = $fbMapping['regions'][$legacy];
+            if (isset($mapping['regions'][$legacy])) {
+                if (!isset($mapping['regions'][$modern])) {
+                    $mapping['regions'][$modern] = $mapping['regions'][$legacy];
                 }
-                unset($fbMapping['regions'][$legacy]);
+                unset($mapping['regions'][$legacy]);
             }
-            if (isset($fbMapping['region_events'][$legacy])) {
-                if (!isset($fbMapping['region_events'][$modern])) {
-                    $fbMapping['region_events'][$modern] = $fbMapping['region_events'][$legacy];
+            if (isset($mapping['region_events'][$legacy])) {
+                if (!isset($mapping['region_events'][$modern])) {
+                    $mapping['region_events'][$modern] = $mapping['region_events'][$legacy];
                 }
-                unset($fbMapping['region_events'][$legacy]);
+                unset($mapping['region_events'][$legacy]);
             }
         }
-        $fbDefaults = [
+        $mappingDefaults = [
             'teams' => [
                 'team_1' => [
                     'label' => 'Montageteam 1',
@@ -432,11 +424,11 @@ class Plugin
                 'etage' => [],
             ],
         ];
-        $mergedMapping = wp_parse_args($fbMapping, $fbDefaults);
+        $mergedMapping = wp_parse_args($mapping, $mappingDefaults);
         if (!isset($mergedMapping['selectors']) || !is_array($mergedMapping['selectors'])) {
             $mergedMapping['selectors'] = [];
         }
-        foreach (array_keys($fbDefaults['regions']) as $regionKey) {
+        foreach (array_keys($mappingDefaults['regions']) as $regionKey) {
             $existingSelectors = $mergedMapping['selectors'][$regionKey] ?? [];
             if (!is_array($existingSelectors)) {
                 $existingSelectors = [];
@@ -451,8 +443,8 @@ class Plugin
                 $mergedMapping['prefill_map'][$mode] = [];
             }
         }
-        if ($mergedMapping !== $fbMapping) {
-            update_option(self::OPTION_FB_MAPPING, $mergedMapping, true);
+        if ($mergedMapping !== $mapping) {
+            update_option(self::OPTION_BOOKING_MAPPING, $mergedMapping, true);
         }
 
         $apiDefaults = [
@@ -460,13 +452,21 @@ class Plugin
             'token' => '',
             'timeout' => 15,
         ];
-        $apiConfig = get_option(self::OPTION_FB_API, null);
+        $apiConfig = get_option(self::OPTION_BOOKING_API, null);
+        if ($apiConfig === null) {
+            $legacyApi = get_option('sg_fb_api', null);
+            if (is_array($legacyApi) && $legacyApi) {
+                update_option(self::OPTION_BOOKING_API, $legacyApi, false);
+                delete_option('sg_fb_api');
+                $apiConfig = $legacyApi;
+            }
+        }
         if (!is_array($apiConfig)) {
-            update_option(self::OPTION_FB_API, $apiDefaults, false);
+            update_option(self::OPTION_BOOKING_API, $apiDefaults, false);
         } else {
             $mergedApi = wp_parse_args($apiConfig, $apiDefaults);
             if ($mergedApi !== $apiConfig) {
-                update_option(self::OPTION_FB_API, $mergedApi, false);
+                update_option(self::OPTION_BOOKING_API, $mergedApi, false);
             }
         }
 
@@ -513,7 +513,13 @@ class Plugin
             update_option(self::OPTION_REGION_ANCHORS, $resolver->defaultAnchorsList(), false);
         }
         if (get_option(self::OPTION_KEEP_SELECTOR_BOOKING, null) === null) {
-            update_option(self::OPTION_KEEP_SELECTOR_BOOKING, false, false);
+            $legacyKeep = get_option('sg_fb_keep_selector', null);
+            if ($legacyKeep !== null) {
+                update_option(self::OPTION_KEEP_SELECTOR_BOOKING, (bool) $legacyKeep, false);
+                delete_option('sg_fb_keep_selector');
+            } else {
+                update_option(self::OPTION_KEEP_SELECTOR_BOOKING, false, false);
+            }
         }
         $mappingOption = get_option(self::OPTION_REGION_MAPPING, null);
         if (!is_array($mappingOption)) {

@@ -7,7 +7,7 @@ Es verbindet den Verkauf von Haushaltsgeräten mit Montage- und Lieferdiensten u
 
 Das Plugin deckt drei große Bereiche ab:
 1. **Preis- & Service-Berechnung** (Montage, Lieferung, Versand, Abholung)
-2. **Automatisierte Terminbuchung** mit FluentBooking
+2. **Automatisierte Terminbuchung** (online & telefonisch)
 3. **Bestell- und E-Mail-Flows** für eine reibungslose Kommunikation
 
 ---
@@ -16,7 +16,7 @@ Das Plugin deckt drei große Bereiche ab:
 
 - Pflichtfeld **„Terminvereinbarung“** im Checkout (sichtbar bei Montage/Etagenlieferung und gültiger PLZ)
 - **Preisberechnung** anhand von Basispreisen, PLZ-Radius, Etagenaufschlägen, Rabatten und Pooling
-- **FluentBooking-Integration** mit realen Dauerzeiten, Team-Routing, Region-Shortcodes und automatischer Slot-Reservierung
+- **Automatisierte Online-Terminierung** mit realen Dauerzeiten, Team-Routing und Region-Shortcodes
 - Unterschiedliche **E-Mail-Flows** für Online- und Telefonterminierung
 - **WooCommerce-Status-Erweiterung**: z. B. `sg-paid` (Zahlung erhalten) und `sg-arrived` (Ware eingetroffen)
 - Automatische Trigger für Folge-Status und E-Mail-Benachrichtigungen
@@ -33,7 +33,7 @@ Das Plugin deckt drei große Bereiche ab:
 3. Kunde erhält Terminlink (online) oder Info-Mail (telefonisch)
 4. Admin/Monteure sehen nur zulässige Folgeaktionen im Backend (Status-Guard)
 5. Bei Status „Ware eingetroffen“ werden automatisch passende E-Mails ausgelöst
-6. Kunde bucht Termin über FluentBooking oder wird telefonisch kontaktiert
+6. Kunde bucht Termin über das Online-Interface oder wird telefonisch kontaktiert
 7. Status „Service erfolgt“ schließt den Auftrag ab
 
 ---
@@ -54,9 +54,8 @@ Das Plugin deckt drei große Bereiche ab:
 - Regionenspezifische Buchungslinks (Parameter: `region`, `order`, `name`, `email`)
 - Vorlagen im Backend anpassbar
 
-### FluentBooking Integration
-- Erweiterung der öffentlichen Fluent-UI um **Start–Ende Zeiten**
-- Automatische Slot-Reservierung via `sgmr_create_composite_booking`
+### Online-Buchung
+- Erweiterung der öffentlichen Buchungsoberfläche um **Start–Ende Zeiten**
 - Zeitfenster-Definitionen (08:00–18:00, 5 Blöcke)
 - Mindestvorlauf über `sg_lead_time_days` steuerbar
 
@@ -72,7 +71,7 @@ Das Plugin deckt drei große Bereiche ab:
 
 | Option | Beschreibung |
 | --- | --- |
-| `sg_fb_mapping` | Zuordnung von Teams, Shortcodes und Regionen |
+| `sg_booking_mapping` | Zuordnung von Teams, Shortcodes und Regionen |
 | `sg_regions` | Ziel-URLs pro Region |
 | `sg_email_templates` | HTML-Defaults für Online/Offline-E-Mails |
 | `sg_mode_overlap_guard` | Verhindert Überschneidungen (aktuell `false`) |
@@ -85,7 +84,7 @@ Das Plugin deckt drei große Bereiche ab:
 - Automatisiert Preisberechnung & Terminbuchung  
 - Reduziert Fehler durch klare Statusführung  
 - Transparente Kunden-Kommunikation per E-Mail  
-- Nahtlose Integration mit WooCommerce & FluentBooking  
+- Nahtlose Integration mit WooCommerce
 - Spart Zeit im Backoffice und verbessert Kundenerlebnis  
 
 ---

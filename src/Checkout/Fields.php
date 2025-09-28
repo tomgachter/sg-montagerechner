@@ -2,7 +2,7 @@
 
 namespace SGMR\Checkout;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use SGMR\Plugin;
 use SGMR\Services\CartService;
 use SGMR\Utils\PostcodeHelper;
@@ -10,9 +10,9 @@ use WC_Order;
 
 class Fields
 {
-    private FluentBookingClient $bookingClient;
+    private BookingConfig $bookingClient;
 
-    public function __construct(FluentBookingClient $bookingClient)
+    public function __construct(BookingConfig $bookingClient)
     {
         $this->bookingClient = $bookingClient;
     }

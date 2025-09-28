@@ -2603,11 +2603,6 @@ if (!function_exists('sgmr_timeline_event_label')) {
             'fb_booking_orchestrated' => __('Orchestrierung abgeschlossen', 'sg-mr'),
             'selector_cancelled' => __('Selector storniert', 'sg-mr'),
             'selector_kept' => __('Selector beibehalten', 'sg-mr'),
-            'fluent_booking_create_failed' => __('FluentBooking: Erstellung fehlgeschlagen', 'sg-mr'),
-            'fluent_booking_cancel_failed' => __('FluentBooking: Storno fehlgeschlagen', 'sg-mr'),
-            'fluent_booking_selector_cancelled' => __('FluentBooking: Selector storniert', 'sg-mr'),
-            'fluent_booking_selector_cancel_failed' => __('FluentBooking: Selector-Storno fehlgeschlagen', 'sg-mr'),
-            'fluent_booking_selector_cancel_skipped' => __('FluentBooking: Selector-Storno übersprungen', 'sg-mr'),
         ];
         $key = sanitize_key($key);
         return $map[$key] ?? strtoupper(str_replace('_', ' ', $key));

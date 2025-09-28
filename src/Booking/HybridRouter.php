@@ -233,6 +233,10 @@ class HybridRouter
 
     private function calendarShortcode(int $calendarId): string
     {
-        return sprintf('[fluent_booking id="%d"]', $calendarId);
+        if ($calendarId <= 0) {
+            return '';
+        }
+
+        return '';
     }
 }

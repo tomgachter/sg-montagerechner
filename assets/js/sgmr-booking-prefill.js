@@ -3,7 +3,7 @@
         return;
     }
 
-    var localConfig = window.sgmrFbpPrefill || {};
+    var localConfig = window.sgmrBookingPrefill || window.sgmrFbpPrefill || {};
     var bookingConfig = window.SG_BOOKING_PREFILL_CONFIG || {};
 
     function firstNonEmptyString() {

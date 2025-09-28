@@ -2,7 +2,7 @@
 
 namespace SGMR\Order;
 
-use SGMR\Booking\FluentBookingClient;
+use SGMR\Booking\BookingConfig;
 use SGMR\Services\CartService;
 use SGMR\Services\ScheduleService;
 use SGMR\Utils\Logger;
@@ -10,9 +10,9 @@ use WC_Order;
 
 class CompositeBookingController
 {
-    private FluentBookingClient $client;
+    private BookingConfig $client;
 
-    public function __construct(FluentBookingClient $client)
+    public function __construct(BookingConfig $client)
     {
         $this->client = $client;
     }
